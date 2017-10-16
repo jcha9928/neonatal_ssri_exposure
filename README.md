@@ -1,2 +1,2 @@
 # neonatal_ssri_exposure
-Analysis codes used in the neonatal brain imaging study of prenatal exposure to SSRI.
+Analysis codes used in "Brain structure and connectivity in infants exposed to serotonin reuptake inhibitors during pregnancy"
