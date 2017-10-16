@@ -1,4 +1,5 @@
 function dmri_1_preprocessing(order)
+
 %% reset LD_LIBRARY_PATH
 LD_LIBRARY_PATH=['/nfs/apps/gcc/4.9.2/lib64'];
 %/home/juke/MATLAB/R2016b/sys/os/glnxa64:
@@ -15,16 +16,6 @@ s=num(order+1,2)
 setenv('s', int2str(s))
 workingdir=fullfile(parentdir,int2str(s));
 cd(workingdir)
-
-
-% %% labelconvert
-% if ~exist ('mr_parcels.mif'),
-% lut=fullfile(parentdir,'mr_roi_lut.txt');
-% img_parcels=fullfile(workingdir,'dmri','roi','infant-neo-aal_warped_diff.nii.gz');
-% cmd=['labelconvert ' img_parcels ' ' lut ' ' lut ' mr_parcels.mif && gzip mr_parcels.mif'];
-% unix(cmd)
-% end
-
 
 
 %% 1. setup %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -85,9 +76,6 @@ for i=1:length(filelist)
     unix(cmd)
 end
 
-%% dwi2response-subject level %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% dwi2response tournier <Input DWI> <Output response text file>
-% shview <Output response text file>
 
 %%%% eroded mask
 
@@ -112,12 +100,5 @@ unix(cmd1)
 disp('I THINK EVERYTHING IS DONE BY NOW')
 end
 
-% %% streamline tractography
-% cmd=['tckgen mr_fod_upsample.mif mr_fod_upsample_tckgen_100M.tck -seed_image mr_parcels.mif -mask mr_eroded_mask_upsample.mif -number 100M -maxlength 250 -nthreads 4'];
-% unix(cmd)
-% zip('mr_fod_upsample_tckgen.zip', 'mr_fod_upsample_tckgen.tck')
-%% sift
-
-% example: tcksift 100M.tck WM_FODs.mif 10M_SIFT.tck -act 5TT.mif -term_number 10M
 
 end
