@@ -55,4 +55,17 @@ dwi2fod csd mr_dwi_denoised_preproc_biasCorr_reduced.mif* ../../group_average_re
 tckgen mr_fod.mif.gz mr_fod_tckgen_100M.tck -seed_image mr_parcels.mif* -mask lowb_brain_mask.nii.gz -number 100M -maxlength 100 -force -nthreads 12 && echo tckgen done***************
 tcksift mr_fod_tckgen_100M.tck mr_fod.mif.gz mr_fod_5M_SIFT.tck -term_number 5M -force -nthreads 12
 
+
+## Mrtrix-Generating connectome based on tractogrpahy results weighted by tract counts, FA, and MD, respectively
+tck2connectome -force -zero_diagonal -nthreads 6 mr_fod_5M_SIFT.tck mr_parcels.mif* mr_sift_5M_connectome.csv 
+
+dwi2tensor mr_dwi_denoised_preproc_biasCorr_reduced.mif* - | tensor2metric - -adc adc.mif.gz -force
+dwi2tensor mr_dwi_denoised_preproc_biasCorr_reduced.mif* - | tensor2metric - -fa fa.mif.gz -force
+
+tcksample mr_fod_5M_SIFT.tck fa.mif.gz mean_fa_5M_SIFT.csv -stat_tck mean -force -nthreads 6
+tcksample mr_fod_5M_SIFT.tck adc.mif.gz mean_adc_5M_SIFT.csv -stat_tck mean -force -nthreads 6
+tck2connectome mr_fod_5M_SIFT.tck mr_parcels.mif* connectome_fa_5M_SIFT.csv -zero_diagonal -nthreads 6 -scale_file mean_fa_5M_SIFT.csv -stat_edge mean
+tck2connectome mr_fod_5M_SIFT.tck mr_parcels.mif* connectome_adc_5M_SIFT.csv -zero_diagonal -nthreads 6 -scale_file mean_adc_5M_SIFT.csv -stat_edge mean
+
+
 done
