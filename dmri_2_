@@ -1,0 +1,58 @@
+#! /bin/bash
+
+for s in `cat /ifs/scratch/pimri/posnerlab/1anal/Monk/data/list`; do
+
+template=$monk/template/infant-neo-withCerebellum.nii  
+ref=$template
+vbm=/ifs/scratch/pimri/posnerlab/1anal/Monk/analysis/newstr/vbm/struc
+#echo "cd $monk/analysis/dti/${s}/dmri && flirt -ref $template -in ../*brain.nii.gz -omat str2mni.mat && convert_xfm -omat mni2str.mat -inverse str2mni.mat" >> $monk/cmd    
+	
+echo "#!/bin/bash
+source ~/.bashrc
+export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=12
+echo NOW WARPING FOR SUBJECT ${s}
+#cd /ifs/scratch/pimri/posnerlab/1anal/Monk/fs_new/${s}/dmri
+#ref=/ifs/scratch/pimri/posnerlab/1anal/Monk/template/infant-neo-withCerebellum.nii
+
+
+cd $monk/data/${s}/DTI
+
+if [ -e /ifs/scratch/pimri/posnerlab/1anal/Monk/analysis/newstr/vbm/struc/${s}_str_nu_brain.nii.gz ] ; then 
+   
+## step1. ANTS non-linear transformation from the stadard-mni to indidivual structure space
+imcp /ifs/scratch/pimri/posnerlab/1anal/Monk/analysis/newstr/vbm/struc/${s}_str_nu_brain.nii.gz  ./str.nii.gz
+imcp /ifs/scratch/pimri/posnerlab/1anal/Monk/template/infant-neo-withCerebellum.nii ./mni.nii && gzip -f mni.nii
+imcp /ifs/scratch/pimri/posnerlab/1anal/Monk/template/infant-neo-aal.nii ./mni_aal.nii && gzip -f mni_aal.nii
+
+ANTS 3 -m PR[str.nii.gz,mni.nii.gz,1,2] -i 50x20x10 -o mni2str_synants.nii.gz -t SyN[0.3] -r Gauss[3,0]
+
+WarpImageMultiTransform 3 mni.nii.gz mni2str_warped_synants.nii.gz -R str.nii.gz mni2str_synantsWarp.nii.gz mni2str_synantsAffine.txt
+WarpImageMultiTransform 3 mni_aal.nii.gz mni_aal2str_synants.nii.gz -R str.nii.gz mni2str_synantsWarp.nii.gz mni2str_synantsAffine.txt --use-NN
+
+
+## step2. ANTS transformation from structure to diffusion space
+ANTS 3 -m PR[lowb_brain.nii.gz,str.nii.gz,1,2] -i 50x20x10 -o str2diff_synants.nii.gz -t SyN[0.3] -r Gauss[3,0]
+WarpImageMultiTransform 3 str.nii.gz str2diff_warped_synants.nii.gz -R lowb_brain.nii.gz str2diff_synantsWarp.nii.gz str2diff_synantsAffine.txt
+WarpImageMultiTransform 3 mni_aal2str_synants.nii.gz mni_aal2diff_warped_synants.nii.gz -R lowb_brain.nii.gz str2diff_synantsWarp.nii.gz str2diff_synantsAffine.txt --use-NN
+
+
+## step3. MNI2DIFF
+## ALTERNATIVE MNI2DIFF
+ANTS 3 -m PR[lowb_brain.nii.gz,mni.nii.gz,1,2] -i 100x100x20 -o mni2diff_synants.nii.gz -t SyN[0.3] -r Gauss[2,0]
+WarpImageMultiTransform 3 mni.nii.gz mni2diff_warped_synants.nii.gz -R lowb_brain.nii.gz mni2diff_synantsWarp.nii.gz mni2diff_synantsAffine.txt
+WarpImageMultiTransform 3 mni_aal.nii.gz mni_aal2diff_warped_synants.nii.gz -R lowb_brain.nii.gz mni2diff_synantsWarp.nii.gz mni2diff_synantsAffine.txt --use-NN
+
+labelconvert mni_aal2diff_warped_synants.nii.gz $monk/data/mr_roi_lut.txt $monk/data/mr_roi_lut.txt mr_parcels.mif -nthreads 12 -force
+bet2 lowb lowb_brain -m  
+gzip -d -f -v mr_fod.mif.gz
+
+
+## Mrtrix-Constrained Spherical Deconvolution
+dwi2fod csd mr_dwi_denoised_preproc_biasCorr_reduced.mif* ../../group_average_response.txt mr_fod_group_response.mif.gz -mask mr_dilate_mask.mif -force
+
+
+## Mrtrix-Probabilistic Tractography and Filterting
+tckgen mr_fod.mif.gz mr_fod_tckgen_100M.tck -seed_image mr_parcels.mif* -mask lowb_brain_mask.nii.gz -number 100M -maxlength 100 -force -nthreads 12 && echo tckgen done***************
+tcksift mr_fod_tckgen_100M.tck mr_fod.mif.gz mr_fod_5M_SIFT.tck -term_number 5M -force -nthreads 12
+
+done
